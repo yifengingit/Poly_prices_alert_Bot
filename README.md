@@ -1,47 +1,84 @@
-# PolyStatics 📊
+# PolyStatics Bot 🤖
 
-> Polymarket Advanced Analytics & Screener
+> **Real-time Volatility Alert Bot for Polymarket**
+>
+> 🔴 **Live Channel**: [https://t.me/poly_volume_alert](https://t.me/poly_volume_alert)
 
-PolyStatics 是一个专注于 Polymarket 预测市场的数据分析工具。它旨在帮助交易者发现高价值的投资机会，提供比官方界面更丰富的筛选维度和深度分析。
+PolyStatics Bot is a high-frequency monitoring tool designed to catch "Pump & Dump" movements on Polymarket. It scans the top 5000+ liquid markets every 2 seconds and sends instant alerts when a price changes significantly.
 
 ## ✨ Features
 
-*   **🚀 Market Screener**: 实时筛选热门、高流动性或剧烈波动的市场。
-*   **📈 Advanced Charts**: (Coming Soon) 专业级 K 线与深度图。
-*   **🐋 Whale Alerts**: (Coming Soon) 链上大单监控。
+*   **⚡️ Real-time Monitoring**: Scans ~5,700 markets every 2 seconds.
+*   **🌊 Liquidity Filter**: Only monitors markets with Liquidity > $5,000 (filters out junk markets).
+*   **📉 Volatility Detection**: Triggers alert if "Last Trade Price" changes by **≥10%** within **5 minutes**.
+*   **🔗 Smart Linking**: Generates direct links to the specific market event (handles `event_slug` vs `slug` logic).
+*   **🛡️ Spam Protection**:
+    *   **Cooldown**: 5-minute silence period per market after an alert.
+    *   **Auto-Pruning**: Efficient memory management for historical data.
 
 ## 🛠️ Tech Stack
 
-*   **Backend**: Python, FastAPI, `uv`
-*   **Frontend**: Next.js, Tailwind CSS
-*   **Data**: Polymarket Gamma API
+*   **Core**: Python 3.12, `asyncio`, `httpx`
+*   **Package Manager**: `uv` (The Astral Project)
+*   **Deployment**: Docker, Docker Compose
+*   **Integration**: Telegram Bot API
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 *   Python 3.10+
-*   Node.js 18+
-*   `uv` package manager
+*   `uv` installed (or use pip)
+*   A Telegram Bot Token
 
-### Backend Setup
+### 1. Installation
 
-1.  Initialize environment:
-    ```bash
-    uv sync
-    ```
-2.  Run server:
-    ```bash
-    uv run fastapi dev
-    ```
+Clone the repo and install dependencies:
 
-### Frontend Setup
+```bash
+git clone https://github.com/yifengingit/Poly_prices_alert_Bot.git
+cd Poly_prices_alert_Bot
 
-1.  Install dependencies:
-    ```bash
-    cd frontend
-    npm install
-    ```
-2.  Run development server:
-    ```bash
-    npm run dev
-    ```
+# Install dependencies with uv
+uv sync
+```
+
+### 2. Configuration
+
+Copy the example environment file and edit it:
+
+```bash
+cp .env.example .env
+```
+
+Fill in your Telegram credentials in `.env`:
+```ini
+TELEGRAM_BOT_TOKEN=your_token_here
+TELEGRAM_CHAT_ID=your_channel_id_here
+```
+
+### 3. Run Locally
+
+```bash
+# Run the bot
+uv run backend/app/bot/main.py
+```
+
+### 4. Run with Docker (Recommended)
+
+```bash
+docker compose up -d --build
+```
+
+## 📂 Project Structure
+
+*   `backend/app/bot`: Core bot logic (Volatility Monitor, Telegram Service).
+*   `backend/app/services`: Polymarket API client (Async, Parallel Pagination).
+*   `scripts/`: Utility scripts (e.g., checking price sources).
+
+## 🤝 Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+## 📜 License
+
+[MIT](LICENSE)
