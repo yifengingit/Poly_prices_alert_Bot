@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+*.log
+
+# Deployment Secrets
+deploy.ps1
+setup_remote.sh
+deploy.tar.gz
+
+# JavaScript / Node
+node_modules/
+.next/
+dist/
+build/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

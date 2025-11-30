@@ -1,0 +1,14 @@
+services:
+  bot:
+    build: .
+    container_name: polystatics_bot
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai  # 设置时区，方便查看日志时间
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
