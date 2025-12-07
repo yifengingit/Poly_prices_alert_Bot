@@ -16,7 +16,8 @@ class VolatilityMonitor:
         # Config
         self.CHECK_INTERVAL = 2  # seconds (Aggressive polling)
         self.LIQUIDITY_THRESHOLD = 5000  # $5,000
-        self.VOLATILITY_THRESHOLD = 0.10  # 10%
+        self.VOLUME_THRESHOLD = 1000     # $1,000 (24h Volume)
+        self.VOLATILITY_THRESHOLD = 0.25 # 25% (Increased from 10%)
         # Max history points needed: 5 mins (300s) / 2s interval = 150 points. 
         # Give some buffer, say 200 points.
         self.MAX_HISTORY_LEN = 200
@@ -43,8 +44,12 @@ class VolatilityMonitor:
         current_time = time.time()
         
         for market in markets:
-            # 2. Filter by Liquidity
+            # 2. Filter by Liquidity & Volume
             if market.liquidity < self.LIQUIDITY_THRESHOLD:
+                continue
+
+            # NEW: Filter by 24h Volume to ensure active trading
+            if market.volume_24h < self.VOLUME_THRESHOLD:
                 continue
                 
             # Use Last Trade Price if available, else fallback (maybe 0.5 for binary? No, safer to skip if 0)
@@ -123,13 +128,14 @@ class VolatilityMonitor:
         url_slug = market.event_slug if market.event_slug else (market.slug if market.slug else "market")
         
         msg = (
-            f"<b>{direction} Alert ({period})</b>\n\n"
-            f"❓ <b>Question:</b> {market.question}\n"
-            f"📉 <b>Change:</b> {percent:+.2f}%\n"
-            f"💲 <b>Price:</b> ${old:.3f} ➡️ ${current:.3f}\n"
-            f"💧 <b>Liquidity:</b> ${market.liquidity:,.0f}\n"
-            f"🔗 <a href=\"https://polymarket.com/event/{url_slug}?tid={market.id}\">View Market</a>"
-        )
+                f"<b>{direction} Alert ({period})</b>\n\n"
+                f"❓ <b>Question:</b> {market.question}\n"
+                f"📉 <b>Change:</b> {percent:+.2f}%\n"
+                f"💲 <b>Price:</b> ${old:.3f} ➡️ ${current:.3f}\n"
+                f"💧 <b>Liquidity:</b> ${market.liquidity:,.0f}\n"
+                f"📊 <b>24h Vol:</b> ${market.volume_24h:,.0f}\n"
+                f"🔗 <a href=\"https://polymarket.com/event/{url_slug}?tid={market.id}\">View Market</a>"
+            )
         
         print(f"🔔 Triggering Alert: {market.question} ({percent:.2f}%)")
         await self.telegram.send_message(msg)
