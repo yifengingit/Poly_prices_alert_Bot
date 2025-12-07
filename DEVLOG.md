@@ -1,18 +1,20 @@
 # 📅 开发日记 (DevLog)
 
-**记录日期**: 2025-11-30
-**记录人**: Web3 Architect & Mentor (AI)
-**当前版本**: v0.1.0 (Phase 1.5 Completed)
+本文档用于记录项目的开发历程、技术决策与重要更新。采用倒序或顺序追加记录。
 
 ---
 
-## 1. 项目概况 (Project Overview)
+## 📝 记录日期: 2025-11-30 (Phase 1.5 Completed)
+**记录人**: Web3 Architect & Mentor (AI)
+**当前版本**: v0.1.0
+
+### 1. 项目概况 (Project Overview)
 **PolyStatics** 是一个针对 Polymarket 预测市场的高频波动率监控工具。
 目前已完成 **Telegram 告警机器人** 的开发与部署，能够实时捕获市场价格的剧烈波动（Pump/Dump）并推送通知。
 
-## 2. 当前功能 (Current Features)
+### 2. 当前功能 (Current Features)
 
-### 🤖 Telegram 波动率机器人
+#### 🤖 Telegram 波动率机器人
 *   **监控范围**: 全网成交量前 5700 名的市场。
 *   **过滤条件**:
     *   流动性 (Liquidity) > $5,000 USD。
@@ -31,32 +33,58 @@
     *   当前流动性
     *   **直达链接**: 智能解析 Event Slug，生成可点击的 Polymarket 详情页链接。
 
-### 🏗️ 基础设施
+#### 🏗️ 基础设施
 *   **语言**: Python 3.12
 *   **包管理**: `uv` (代替 pip/poetry)
 *   **部署**: Docker + Docker Compose (基于 Debian 12)
 *   **并发**: 使用 `asyncio` + `httpx` 并发分页拉取 Polymarket API 数据（突破 500 条限制）。
 
-## 3. 关键技术决策 (Technical Decisions)
+### 3. 关键技术决策 (Technical Decisions)
 1.  **价格来源确认**: 经脚本验证，Polymarket API 返回的 `lastTradePrice` 在二元市场中锚定的是 **Yes** 的价格。
 2.  **内存架构**: 鉴于数据量（5000+ 市场）和实时性要求，目前使用 **内存快照 (In-Memory Snapshot)** 存储历史价格，暂未使用 Redis/SQL。这大大降低了部署复杂度。
 3.  **API 优化**: 实现了并发分页 (Parallel Pagination) 以在 2 秒内完成 5700+ 个市场的数据同步。
 
-## 4. 部署信息 (Deployment)
+### 4. 部署信息 (Deployment)
 *   **服务器**: 日本双 ISP VPS (Debian 12, 1核 1G)。
 *   **部署方式**: 使用 `deploy.ps1` 脚本一键自动化部署。
 *   **路径**: `/root/polystatics`
 *   **注意**: `deploy.ps1` 和 `setup_remote.sh` 包含敏感服务器信息，**严禁上传到公开 Git 仓库** (已加入 .gitignore)。
 
-## 5. 已知问题与待办 (Known Issues & TODOs)
-*   **[待观察]** 报警阈值 (10%/5min) 是否过于敏感或迟钝？需根据实际运行数据调整。
-*   **[待开发]** 前端 Dashboard (Next.js) 目前仅搭建了框架，尚未接入后端数据。
-*   **[待优化]** 目前日志仅输出到 Docker console，未来可考虑接入专门的日志系统。
-
-## 6. 交接备注 (Handover Notes)
-*   **代码库**: 核心逻辑在 `backend/app/bot/volatility_monitor.py`。
-*   **启动命令**: 本地开发用 `uv run backend/app/bot/main.py`，服务器用 `docker compose up -d`。
-*   **环境变量**: 必须配置 `.env` 文件中的 `TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_CHAT_ID`。
-
 ---
-*End of Log*
+
+## 📝 记录日期: 2025-11-30 (Strategy Tuning & Architecture)
+**记录人**: Web3 Architect & Mentor (AI)
+**主题**: 策略调优与架构思考
+
+### 1. 🔄 策略调整 (Strategy Tuning)
+
+#### 问题描述
+用户反馈“信号太多”，存在大量噪音。
+分析发现，许多低流动性或交易不活跃的市场，因为几笔小额交易导致价格剧烈跳变（如从 0.01 变 0.02，涨幅 100%），但这并不具备套利价值。
+
+#### 调整方案
+1.  **提高波动率阈值**: 将 5 分钟波动率阈值从 `10%` 提高到 **`25%`**。
+    *   *理由*: 10% 在 Crypto 预测市场中确实太常见了。25% 更能过滤出真正的“事件驱动”行情。
+2.  **新增成交量过滤**: 新增 `VOLUME_THRESHOLD = 1000` (24h Volume)。
+    *   *理由*: 仅看 Liquidity 是不够的（有些市场有流动性但没人玩）。只有 24小时成交量 > $1000 的市场才被视为“活跃市场”，值得监控。
+
+### 2. 🏛️ 架构思考: Polling vs WebSocket
+
+#### 用户疑问
+> 是保持现在的五分钟查一次（实际是2秒轮询），还是使用 WebSocket？
+
+#### 架构师分析
+对于 **“全网扫描 (Global Scanner)”** 场景，目前采用的 **HTTP Polling (2s Interval)** 方案优于 WebSocket。
+
+**Polling (当前方案) 的优势**:
+1.  **全局视角**: 我们需要监控 5700+ 个市场。Polymarket API `/markets` 接口经过优化，适合批量拉取快照。
+2.  **状态管理简单**: 不需要维护 5000 个 WebSocket 连接或处理复杂的 Subscription 逻辑。
+3.  **鲁棒性**: HTTP 请求失败重试即可；WebSocket 断连需要处理重连、状态同步、丢包等复杂问题。
+4.  **API 限制**: 只有少数机构级 API (如 Clob Client) 支持高效的 Firehose 模式。对于免费/公开 API，高频轮询是最稳妥的。
+
+**WebSocket 的适用场景**:
+*   高频交易 (HFT)
+*   只监控特定的几个市场 (Watchlist)
+*   需要毫秒级反应速度
+
+**结论**: 维持 Polling 架构，重点优化过滤逻辑。
